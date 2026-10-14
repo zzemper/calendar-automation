@@ -25,6 +25,21 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown(
+    """
+    <style>
+
+    div.stButton > button {
+        height: 75px !important;
+        white-space: pre-line !important;
+        line-height: 1.2 !important;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("📅 Calendar Automation")
 st.write(
     "Select fiscal weeks and calendars, then click each date to cycle "
@@ -435,18 +450,18 @@ week_col1, week_col2 = st.columns(2)
 with week_col1:
     starting_week = st.number_input(
         "Starting fiscal week",
-        min_value=BASE_FISCAL_WEEK,
-        max_value=MAX_FISCAL_WEEK,
-        value=BASE_FISCAL_WEEK,
+        min_value=1,
+        max_value=52,
+        value=45,
         step=1,
     )
 
 with week_col2:
     ending_week = st.number_input(
         "Ending fiscal week",
-        min_value=BASE_FISCAL_WEEK,
-        max_value=MAX_FISCAL_WEEK,
-        value=47,
+        min_value=1,
+        max_value=52,
+        value=48,
         step=1,
     )
 
@@ -1212,7 +1227,7 @@ existing_calendars = st.multiselect(
         "SHIP_DF_SUPP_460",
         "SHIP_DF_TWRFSA_FIRSTMIN",
     ],
-    default=["SHIP_DF_860_TG"]
+    default=[]
 )
 
 st.markdown(
@@ -1358,7 +1373,7 @@ for calendar_name in selected_calendars:
             status = get_day_status(calendar_name, calendar_date)
             style = STATUS_STYLE[status]
             button_label = (
-                f"{style['icon']} {calendar_date.strftime('%b %d')}   "
+                f"{style['icon']} {calendar_date.strftime('%b %d')}\n"
                 f"{style['label']}"
             )
 
@@ -1393,7 +1408,8 @@ st.header("Step 5: Describe and download the file")
 
 description = st.text_input(
     "Description for the Descr column",
-    value="turkeys 2026",
+    value="",
+    placeholder="Ex) Turkeys 2026"
 )
 
 add_repeat = st.checkbox(
