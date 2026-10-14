@@ -1372,10 +1372,14 @@ for calendar_name in selected_calendars:
         for day_index, calendar_date in enumerate(week_dates, start=1):
             status = get_day_status(calendar_name, calendar_date)
             style = STATUS_STYLE[status]
-            button_label = (
-                f"{style['icon']} {calendar_date.strftime('%b %d')}\n"
-                f"{style['label']}"
+            st.markdown(
+                f"<div style='text-align:center; font-size:12px;'>"
+                f"{style['icon']} {style['label']}"
+                f"</div>",
+                unsafe_allow_html=True
             )
+            
+            button_label = calendar_date.strftime('%b %d')
 
 
             with row_columns[day_index]:
