@@ -25,20 +25,22 @@ st.set_page_config(
     layout="wide",
 )
 
-st.markdown(
-    """
-    <style>
 
-    div.stButton > button {
-        height: 75px !important;
-        white-space: pre-line !important;
-        line-height: 1.2 !important;
-    }
+# temporary button height solution
+# st.markdown(
+#     """
+#     <style>
 
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+#     div.stButton > button {
+#         height: 75px !important;
+#         white-space: pre-line !important;
+#         line-height: 1.2 !important;
+#     }
+
+#     </style>
+#     """,
+#     unsafe_allow_html=True
+# )
 
 st.title("📅 Calendar Automation")
 st.write(
@@ -1374,6 +1376,7 @@ for calendar_name in selected_calendars:
             style = STATUS_STYLE[status]
             button_label = (
                 f"{style['icon']} "
+                f"{calendar_date.strftime('%b')} "
                 f"{calendar_date.day}"
             )
 
