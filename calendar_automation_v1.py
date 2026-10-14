@@ -193,45 +193,56 @@ def build_output_dataframe(
     selected_calendars,
     fiscal_weeks,
     minute_selection_by_calendar,
-    description,
+    description_by_calendar,
     add_repeat,
 ):
     """
     Build the final import-format dataframe.
 
-    Export rules:
-    - Gray/Not selected dates are excluded.
+    Rules:
+    - Gray dates are excluded.
     - Open dates create two rows with Opt = 2.
     - Closed dates create two rows with Opt = 1.
-    - If add_repeat is enabled, one additional row is created
-      for the day immediately after the latest selected date.
-    - The additional repeat row receives Opt = 5 and Repeat = 7D.
+    - Each calendar can have its own optional description.
+    - The repeat row is added after the latest selected date.
     """
 
     rows = []
 
     for calendar_name in selected_calendars:
-        minute_option = minute_selection_by_calendar[
-            calendar_name
-        ]
+
+        minute_option = (
+            minute_selection_by_calendar[
+                calendar_name
+            ]
+        )
+
+        calendar_description = (
+            description_by_calendar.get(
+                calendar_name,
+                ""
+            ).strip()
+        )
 
         calendar_rows = []
         selected_calendar_dates = []
 
         for week_number in fiscal_weeks:
-            for calendar_date in dates_for_fiscal_week(
-                week_number
+
+            for calendar_date in (
+                dates_for_fiscal_week(
+                    week_number
+                )
             ):
+
                 status = get_day_status(
                     calendar_name,
                     calendar_date
                 )
 
-                # Gray dates are intentionally excluded.
                 if status == "Not selected":
                     continue
 
-                # Track the actual calendar date selected by the user.
                 selected_calendar_dates.append(
                     calendar_date
                 )
@@ -248,44 +259,33 @@ def build_output_dataframe(
                     )
                 )
 
-                # First record for the selected date.
-                calendar_rows.append(
-                    {
-                        "*Cal": calendar_name,
-                        "*Eff": first_eff,
-                        "AllocWgt": 0,
-                        "AltCal": "",
-                        "Avail": 0,
-                        "Descr": description.strip(),
-                        "Opt": opt_value,
-                        "PerWgt": 0,
-                        "Repeat": "",
-                    }
-                )
+                for effective_datetime in [
+                    first_eff,
+                    second_eff,
+                ]:
 
-                # Second record for the selected date.
-                calendar_rows.append(
-                    {
-                        "*Cal": calendar_name,
-                        "*Eff": second_eff,
-                        "AllocWgt": 0,
-                        "AltCal": "",
-                        "Avail": 0,
-                        "Descr": description.strip(),
-                        "Opt": opt_value,
-                        "PerWgt": 0,
-                        "Repeat": "",
-                    }
-                )
+                    calendar_rows.append(
+                        {
+                            "*Cal": calendar_name,
+                            "*Eff": effective_datetime,
+                            "AllocWgt": 0,
+                            "AltCal": "",
+                            "Avail": 0,
+                            "Descr": (
+                                calendar_description
+                            ),
+                            "Opt": opt_value,
+                            "PerWgt": 0,
+                            "Repeat": "",
+                        }
+                    )
 
-        # ----------------------------------------------------
-        # ADD THE NEW REPEAT ROW
-        # ----------------------------------------------------
-
+        # Add one repeat row after the latest selected date.
         if (
             add_repeat
             and selected_calendar_dates
         ):
+
             latest_selected_date = max(
                 selected_calendar_dates
             )
@@ -295,7 +295,11 @@ def build_output_dataframe(
                 + timedelta(days=1)
             )
 
-            if minute_option == "First minute of the day":
+            if (
+                minute_option
+                == "First minute of the day"
+            ):
+
                 repeat_effective_datetime = (
                     datetime.combine(
                         repeat_date,
@@ -303,7 +307,11 @@ def build_output_dataframe(
                     )
                 )
 
-            elif minute_option == "Last minute of the day":
+            elif (
+                minute_option
+                == "Last minute of the day"
+            ):
+
                 repeat_effective_datetime = (
                     datetime.combine(
                         repeat_date,
@@ -312,7 +320,7 @@ def build_output_dataframe(
                 )
 
             else:
-                # 2nd to last minute of the day
+
                 repeat_effective_datetime = (
                     datetime.combine(
                         repeat_date,
@@ -323,11 +331,15 @@ def build_output_dataframe(
             calendar_rows.append(
                 {
                     "*Cal": calendar_name,
-                    "*Eff": repeat_effective_datetime,
+                    "*Eff": (
+                        repeat_effective_datetime
+                    ),
                     "AllocWgt": 0,
                     "AltCal": "",
                     "Avail": 0,
-                    "Descr": description.strip(),
+                    "Descr": (
+                        calendar_description
+                    ),
                     "Opt": 5,
                     "PerWgt": 0,
                     "Repeat": "7D",
@@ -346,13 +358,14 @@ def build_output_dataframe(
     )
 
     if not output_df.empty:
+
         output_df["*Eff"] = pd.to_datetime(
             output_df["*Eff"]
         )
 
         output_df = output_df.sort_values(
             by=["*Cal", "*Eff"],
-            kind="stable"
+            kind="stable",
         ).reset_index(drop=True)
 
     return output_df
@@ -435,50 +448,226 @@ def selected_date_summary(calendar_name, fiscal_weeks):
 
     return counts
 
+def validate_minimum_selected_days(
+    selected_calendars,
+    fiscal_weeks,
+    minimum_days=7,
+):
+    """
+    Check that every calendar has at least the required
+    number of Open or Closed dates.
+
+    Returns:
+    - Dictionary containing selected-day counts
+    - List of calendars that fail validation
+    """
+
+    selected_day_counts = {}
+    invalid_calendars = []
+
+    for calendar_name in selected_calendars:
+
+        selected_count = 0
+
+        for week_number in fiscal_weeks:
+
+            for calendar_date in (
+                dates_for_fiscal_week(
+                    week_number
+                )
+            ):
+
+                status = get_day_status(
+                    calendar_name,
+                    calendar_date
+                )
+
+                if status in [
+                    "Open",
+                    "Closed",
+                ]:
+                    selected_count += 1
+
+        selected_day_counts[
+            calendar_name
+        ] = selected_count
+
+        if selected_count < minimum_days:
+            invalid_calendars.append(
+                calendar_name
+            )
+
+    return (
+        selected_day_counts,
+        invalid_calendars,
+    )
+
 
 # ============================================================
-# STEP 1: FISCAL WEEKS
+# STEP 1: DATE RANGE SELECTION
 # ============================================================
 
-st.header("Step 1: Select fiscal weeks")
+st.header("Step 1: Select the weeks to edit")
 
-st.info(
-    "Fiscal week 40 begins Sunday, November 1, 2026. "
-    "Each following fiscal week begins seven days later."
+selection_method = st.radio(
+    "How would you like to select the weeks?",
+    options=[
+        "Select fiscal weeks",
+        "Select dates on a normal calendar",
+    ],
+    horizontal=True,
 )
 
-week_col1, week_col2 = st.columns(2)
+if selection_method == "Select fiscal weeks":
 
-with week_col1:
-    starting_week = st.number_input(
-        "Starting fiscal week",
-        min_value=1,
-        max_value=52,
-        value=45,
-        step=1,
+    st.info(
+        "Select fiscal weeks 1 through 52. "
+        "The app opens to fiscal weeks 45 through 48 by default."
     )
 
-with week_col2:
-    ending_week = st.number_input(
-        "Ending fiscal week",
-        min_value=1,
-        max_value=52,
-        value=48,
-        step=1,
+    week_col1, week_col2 = st.columns(2)
+
+    with week_col1:
+        starting_week = st.number_input(
+            "Starting fiscal week",
+            min_value=1,
+            max_value=52,
+            value=45,
+            step=1,
+        )
+
+    with week_col2:
+        ending_week = st.number_input(
+            "Ending fiscal week",
+            min_value=1,
+            max_value=52,
+            value=48,
+            step=1,
+        )
+
+    if ending_week < starting_week:
+        st.error(
+            "Ending fiscal week must be the same as or later "
+            "than the starting fiscal week."
+        )
+        st.stop()
+
+    fiscal_weeks = list(
+        range(
+            int(starting_week),
+            int(ending_week) + 1,
+        )
     )
 
-if ending_week < starting_week:
-    st.error("Ending fiscal week must be the same as or later than the starting week.")
-    st.stop()
+else:
 
-fiscal_weeks = list(range(int(starting_week), int(ending_week) + 1))
+    st.info(
+        "Select any beginning and ending dates. "
+        "The app will include every Sunday-to-Saturday week "
+        "that overlaps the selected dates."
+    )
+
+    date_col1, date_col2 = st.columns(2)
+
+    with date_col1:
+        selected_start_date = st.date_input(
+            "Beginning calendar date",
+            value=date(2026, 11, 29),
+            key="calendar_range_start",
+        )
+
+    with date_col2:
+        selected_end_date = st.date_input(
+            "Ending calendar date",
+            value=date(2026, 12, 26),
+            key="calendar_range_end",
+        )
+
+    if selected_end_date < selected_start_date:
+        st.error(
+            "The ending date must be the same as or later "
+            "than the beginning date."
+        )
+        st.stop()
+
+    # Move the selected beginning date back to Sunday.
+    days_since_sunday = (
+        selected_start_date.weekday() + 1
+    ) % 7
+
+    first_selected_sunday = (
+        selected_start_date
+        - timedelta(days=days_since_sunday)
+    )
+
+    # Move the selected ending date forward to Saturday.
+    days_until_saturday = (
+        5 - selected_end_date.weekday()
+    ) % 7
+
+    last_selected_saturday = (
+        selected_end_date
+        + timedelta(days=days_until_saturday)
+    )
+
+    # Convert the selected calendar weeks to fiscal-week numbers.
+    first_week_number = (
+        BASE_FISCAL_WEEK
+        + (
+            (
+                first_selected_sunday
+                - BASE_FISCAL_WEEK_START
+            ).days
+            // 7
+        )
+    )
+
+    last_week_number = (
+        BASE_FISCAL_WEEK
+        + (
+            (
+                last_selected_saturday
+                - BASE_FISCAL_WEEK_START
+            ).days
+            // 7
+        )
+    )
+
+    if (
+        first_week_number < 1
+        or last_week_number > 52
+    ):
+        st.error(
+            "The selected dates fall outside fiscal weeks "
+            "1 through 52 for the currently configured fiscal year. "
+            "Please choose dates within the configured fiscal year."
+        )
+        st.stop()
+
+    fiscal_weeks = list(
+        range(
+            int(first_week_number),
+            int(last_week_number) + 1,
+        )
+    )
+
+    st.caption(
+        "The selected dates were expanded to full "
+        "Sunday-through-Saturday calendar weeks."
+    )
+
 
 week_reference = pd.DataFrame(
     [
         {
             "Fiscal Week": week_number,
-            "Start Date": fiscal_week_start(week_number),
-            "End Date": fiscal_week_start(week_number) + timedelta(days=6),
+            "Start Date": fiscal_week_start(
+                week_number
+            ),
+            "End Date": (
+                fiscal_week_start(week_number)
+                + timedelta(days=6)
+            ),
         }
         for week_number in fiscal_weeks
     ]
@@ -1404,49 +1593,139 @@ for calendar_name in selected_calendars:
 
 
 # ============================================================
-# STEP 5: DESCRIPTION, PREVIEW, AND DOWNLOAD
+# STEP 5: OPTIONAL DESCRIPTIONS AND CSV DOWNLOAD
 # ============================================================
 
-st.header("Step 5: Describe and download the file")
-
-description = st.text_input(
-    "Description for the Descr column",
-    value="",
-    placeholder="Ex) Turkeys 2026"
+st.header(
+    "Step 5: Add optional descriptions and download"
 )
+
+st.info(
+    "Descriptions are optional. If entered, each description "
+    "will be placed in the Descr column for that calendar."
+)
+
+description_by_calendar = {}
+
+for calendar_name in selected_calendars:
+
+    description_by_calendar[
+        calendar_name
+    ] = st.text_input(
+        f"Optional description for {calendar_name}",
+        value="",
+        placeholder="Ex) 'Turkeys 2026'",
+        key=(
+            "description__"
+            + safe_key(calendar_name)
+        ),
+    )
+
+
+# ============================================================
+# SEVEN-DAY VALIDATION
+# ============================================================
+
+(
+    selected_day_counts,
+    invalid_calendars,
+) = validate_minimum_selected_days(
+    selected_calendars=selected_calendars,
+    fiscal_weeks=fiscal_weeks,
+    minimum_days=7,
+)
+
+st.markdown("#### Selected-day validation")
+
+validation_rows = []
+
+for calendar_name in selected_calendars:
+
+    selected_count = selected_day_counts[
+        calendar_name
+    ]
+
+    if selected_count >= 7:
+        validation_status = "Ready"
+    else:
+        validation_status = "Needs more dates"
+
+    validation_rows.append(
+        {
+            "Calendar": calendar_name,
+            "Selected Days": selected_count,
+            "Required Days": 7,
+            "Status": validation_status,
+        }
+    )
+
+st.dataframe(
+    pd.DataFrame(validation_rows),
+    hide_index=True,
+    use_container_width=True,
+)
+
+
+# ============================================================
+# REPEAT SETTING
+# ============================================================
 
 add_repeat = st.checkbox(
     "Add the Opt 5 / 7D repeat row for each calendar",
     value=True,
     help=(
-        "Adds one new row for the day immediately after the "
-        "latest selected date. The row receives Opt = 5 and "
-        "Repeat = 7D."
+        "The repeat row is added immediately after "
+        "the latest selected date for each calendar."
     ),
 )
+
+
+# ============================================================
+# BUILD OUTPUT
+# ============================================================
 
 output_df = build_output_dataframe(
     selected_calendars=selected_calendars,
     fiscal_weeks=fiscal_weeks,
-    minute_selection_by_calendar=minute_selection_by_calendar,
-    description=description,
+    minute_selection_by_calendar=(
+        minute_selection_by_calendar
+    ),
+    description_by_calendar=(
+        description_by_calendar
+    ),
     add_repeat=add_repeat,
 )
 
+
+# ============================================================
+# PREVIEW
+# ============================================================
+
 if output_df.empty:
-    st.warning(
-        "No dates are currently marked Open or Closed. Gray dates are not exported."
+
+    st.error(
+        "No dates are currently marked Open or Closed. "
+        "Gray dates are excluded from the export."
     )
+
 else:
+
     preview_df = output_df.copy()
-    preview_df["*Eff"] = preview_df["*Eff"].apply(
+
+    preview_df["*Eff"] = preview_df[
+        "*Eff"
+    ].apply(
         lambda value: (
-            f"{value.month}/{value.day}/{value.year} "
-            f"{value.hour}:{value.minute:02d}"
+            f"{value.month}/"
+            f"{value.day}/"
+            f"{value.year} "
+            f"{value.hour}:"
+            f"{value.minute:02d}"
         )
     )
 
     st.subheader("Output preview")
+
     st.dataframe(
         preview_df,
         hide_index=True,
@@ -1454,7 +1733,51 @@ else:
         height=450,
     )
 
-    st.caption(f"The output contains {len(output_df):,} records.")
+    st.caption(
+        f"The output contains "
+        f"{len(output_df):,} records."
+    )
+
+
+# ============================================================
+# HARD STOP FOR FEWER THAN SEVEN DAYS
+# ============================================================
+
+if invalid_calendars:
+
+    st.error(
+        "Download blocked. Every calendar must contain "
+        "at least 7 calendar days marked Open or Closed "
+        "before the repeat row can be generated correctly."
+    )
+
+    st.markdown(
+        "**Select additional dates for the following calendars:**"
+    )
+
+    for calendar_name in invalid_calendars:
+
+        current_count = selected_day_counts[
+            calendar_name
+        ]
+
+        additional_days_needed = (
+            7 - current_count
+        )
+
+        st.warning(
+            f"{calendar_name}: "
+            f"{current_count} of 7 days selected. "
+            f"Select at least "
+            f"{additional_days_needed} more day(s)."
+        )
+
+
+# ============================================================
+# CSV DOWNLOAD
+# ============================================================
+
+else:
 
     output_name = st.text_input(
         "Output filename",
@@ -1470,19 +1793,36 @@ else:
     if not safe_output_name:
         safe_output_name = "Calendar_Import"
 
-    if not description.strip():
-        st.error("Enter a description before downloading.")
-    else:
-        excel_file = create_excel_file(output_df)
+    csv_output_df = output_df.copy()
 
-        st.download_button(
-            label="📥 Download Calendar Import File",
-            data=excel_file,
-            file_name=f"{safe_output_name}.xlsx",
-            mime=(
-                "application/vnd.openxmlformats-officedocument."
-                "spreadsheetml.sheet"
-            ),
-            type="primary",
-            use_container_width=True,
+    # Format *Eff exactly as visible date/time text.
+    csv_output_df["*Eff"] = csv_output_df[
+        "*Eff"
+    ].apply(
+        lambda value: (
+            f"{value.month}/"
+            f"{value.day}/"
+            f"{value.year} "
+            f"{value.hour}:"
+            f"{value.minute:02d}"
         )
+    )
+
+    csv_data = csv_output_df.to_csv(
+        index=False,
+        lineterminator="\n",
+    ).encode("utf-8-sig")
+
+    st.success(
+        "Every selected calendar has at least 7 days "
+        "of Open or Closed data. The file is ready."
+    )
+
+    st.download_button(
+        label="📥 Download Calendar Import CSV",
+        data=csv_data,
+        file_name=f"{safe_output_name}.csv",
+        mime="text/csv",
+        type="primary",
+        use_container_width=True,
+    )
