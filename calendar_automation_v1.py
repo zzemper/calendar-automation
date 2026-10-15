@@ -11,8 +11,9 @@ from datetime import date, datetime, time, timedelta
 
 import pandas as pd
 import streamlit as st
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
+# no longer needed bc creating a csv file
+# from openpyxl.styles import Alignment, Font, PatternFill
+# from openpyxl.utils import get_column_letter
 
 
 # ============================================================
@@ -370,67 +371,67 @@ def build_output_dataframe(
 
     return output_df
 
+# no longer need this function bc exporting csv
+# def create_excel_file(output_df):
+#     """Create the formatted Excel import file in memory."""
+#     output = io.BytesIO()
 
-def create_excel_file(output_df):
-    """Create the formatted Excel import file in memory."""
-    output = io.BytesIO()
+#     with pd.ExcelWriter(
+#         output,
+#         engine="openpyxl",
+#         datetime_format="m/d/yyyy h:mm",
+#     ) as writer:
+#         output_df.to_excel(
+#             writer,
+#             index=False,
+#             sheet_name="Calendar Import",
+#         )
 
-    with pd.ExcelWriter(
-        output,
-        engine="openpyxl",
-        datetime_format="m/d/yyyy h:mm",
-    ) as writer:
-        output_df.to_excel(
-            writer,
-            index=False,
-            sheet_name="Calendar Import",
-        )
+#         worksheet = writer.book["Calendar Import"]
+#         worksheet.freeze_panes = "A2"
+#         worksheet.auto_filter.ref = worksheet.dimensions
 
-        worksheet = writer.book["Calendar Import"]
-        worksheet.freeze_panes = "A2"
-        worksheet.auto_filter.ref = worksheet.dimensions
+#         header_fill = PatternFill(
+#             fill_type="solid",
+#             fgColor="1F4E78",
+#         )
+#         header_font = Font(
+#             color="FFFFFF",
+#             bold=True,
+#         )
 
-        header_fill = PatternFill(
-            fill_type="solid",
-            fgColor="1F4E78",
-        )
-        header_font = Font(
-            color="FFFFFF",
-            bold=True,
-        )
+#         for header_cell in worksheet[1]:
+#             header_cell.fill = header_fill
+#             header_cell.font = header_font
+#             header_cell.alignment = Alignment(
+#                 horizontal="center",
+#                 vertical="center",
+#             )
 
-        for header_cell in worksheet[1]:
-            header_cell.fill = header_fill
-            header_cell.font = header_font
-            header_cell.alignment = Alignment(
-                horizontal="center",
-                vertical="center",
-            )
+#         for date_cell in worksheet["B"][1:]:
+#             date_cell.number_format = "m/d/yyyy h:mm"
 
-        for date_cell in worksheet["B"][1:]:
-            date_cell.number_format = "m/d/yyyy h:mm"
+#         widths = {
+#             "A": 26,
+#             "B": 20,
+#             "C": 12,
+#             "D": 12,
+#             "E": 10,
+#             "F": 30,
+#             "G": 8,
+#             "H": 12,
+#             "I": 10,
+#         }
 
-        widths = {
-            "A": 26,
-            "B": 20,
-            "C": 12,
-            "D": 12,
-            "E": 10,
-            "F": 30,
-            "G": 8,
-            "H": 12,
-            "I": 10,
-        }
+#         for column_letter, width in widths.items():
+#             worksheet.column_dimensions[column_letter].width = width
 
-        for column_letter, width in widths.items():
-            worksheet.column_dimensions[column_letter].width = width
+#         for row in worksheet.iter_rows(min_row=2):
+#             for cell in row:
+#                 cell.alignment = Alignment(vertical="center")
 
-        for row in worksheet.iter_rows(min_row=2):
-            for cell in row:
-                cell.alignment = Alignment(vertical="center")
-
-    output.seek(0)
-    return output
+#     output.seek(0)
+#     return output
 
 
 def selected_date_summary(calendar_name, fiscal_weeks):
