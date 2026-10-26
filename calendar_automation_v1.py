@@ -248,38 +248,109 @@ def build_output_dataframe(
                     calendar_date
                 )
 
-                if status == "Open":
-                    opt_value = 2
-                else:
-                    opt_value = 1
-
                 first_eff, second_eff = (
                     build_effective_datetimes(
                         calendar_date,
                         minute_option
                     )
                 )
+                
+                if status == "Open":
 
-                for effective_datetime in [
-                    first_eff,
-                    second_eff,
-                ]:
-
+                    # First record = OPEN
                     calendar_rows.append(
                         {
                             "*Cal": calendar_name,
-                            "*Eff": effective_datetime,
+                            "*Eff": first_eff,
                             "AllocWgt": 0,
                             "AltCal": "",
                             "Avail": 0,
-                            "Descr": (
-                                calendar_description
-                            ),
-                            "Opt": opt_value,
+                            "Descr": calendar_description,
+                            "Opt": 2,
                             "PerWgt": 0,
                             "Repeat": "",
                         }
                     )
+                
+                    # Second record = CLOSED
+                    calendar_rows.append(
+                        {
+                            "*Cal": calendar_name,
+                            "*Eff": second_eff,
+                            "AllocWgt": 0,
+                            "AltCal": "",
+                            "Avail": 0,
+                            "Descr": calendar_description,
+                            "Opt": 1,
+                            "PerWgt": 0,
+                            "Repeat": "",
+                        }
+                    )
+                
+                else:
+                
+                    # Closed day
+                    # Both records remain CLOSED
+                
+                    calendar_rows.append(
+                        {
+                            "*Cal": calendar_name,
+                            "*Eff": first_eff,
+                            "AllocWgt": 0,
+                            "AltCal": "",
+                            "Avail": 0,
+                            "Descr": calendar_description,
+                            "Opt": 1,
+                            "PerWgt": 0,
+                            "Repeat": "",
+                        }
+                    )
+                
+                    calendar_rows.append(
+                        {
+                            "*Cal": calendar_name,
+                            "*Eff": second_eff,
+                            "AllocWgt": 0,
+                            "AltCal": "",
+                            "Avail": 0,
+                            "Descr": calendar_description,
+                            "Opt": 1,
+                            "PerWgt": 0,
+                            "Repeat": "",
+                        }
+                    )
+                # if status == "Open":
+                #     opt_value = 2
+                # else:
+                #     opt_value = 1
+
+                # first_eff, second_eff = (
+                #     build_effective_datetimes(
+                #         calendar_date,
+                #         minute_option
+                #     )
+                # )
+
+                # for effective_datetime in [
+                #     first_eff,
+                #     second_eff,
+                # ]:
+
+                #     calendar_rows.append(
+                #         {
+                #             "*Cal": calendar_name,
+                #             "*Eff": effective_datetime,
+                #             "AllocWgt": 0,
+                #             "AltCal": "",
+                #             "Avail": 0,
+                #             "Descr": (
+                #                 calendar_description
+                #             ),
+                #             "Opt": opt_value,
+                #             "PerWgt": 0,
+                #             "Repeat": "",
+                #         }
+                #     )
 
         # Add one repeat row after the latest selected date.
         if (
@@ -1259,7 +1330,7 @@ existing_calendars = st.multiselect(
         "SHIP_DF_FOODS_805",
         "SHIP_DF_FOODS_86",
         "SHIP_DF_FOODS_STF",
-        "SHIP_DF_FRESH_6X_NO_TU_NEXTDAY,MD",
+        "SHIP_DF_FRESH_6X_NO_TU_NEXTDAYMD",
         "SHIP_DF_FRESH_6X_SAMEDAYDMND",
         "SHIP_DF_FRESH_6X_TUE",
         "SHIP_DF_FRESH_6X_WED",
