@@ -1899,176 +1899,609 @@ for calendar_name in selected_calendars:
 st.header("Step 4: Mark calendar dates")
 
 st.info(
-    "Each date starts gray and is excluded from export. Click once to mark it "
-    "green/Open, click again to mark it red/Closed, and click a third time to "
-    "return it to gray/Not selected. Include seven normally scheduled days at "
-    "the end when a 7D automatic repeat should be added."
+    "Each date starts gray and is excluded from export. "
+    "Click once to mark it green/Open, click again to mark it "
+    "red/Closed, and click a third time to return it to "
+    "gray/Not selected. Include at least seven normally scheduled "
+    "days at the end when a 7D automatic repeat should be added."
 )
 
-st.caption("Click a date to cycle: ⚪ Not Selected → 🟢 Open → 🔴 Closed")
+st.caption(
+    "Click a date to cycle: "
+    "⚪ Not Selected → 🟢 Open → 🔴 Closed"
+)
 
-for calendar_name in selected_calendars:
-    st.subheader(calendar_name)
-    
+
+# ============================================================
+# SELECT CALENDAR VIEW
+# ============================================================
+
+calendar_view = st.radio(
+    "How would you like to organize the calendar editor?",
+    options=[
+        "By Calendar",
+        "By Fiscal Week",
+    ],
+    index=0,
+    horizontal=True,
+    key="calendar_editor_view",
+)
+
+if calendar_view == "By Calendar":
+
     st.caption(
-        f"Minute rule: {minute_selection_by_calendar[calendar_name]}"
+        "Each calendar is shown separately with all selected "
+        "fiscal weeks together."
     )
-    
-    # --------------------------------------------------------
-    # COPY DATES FROM ANOTHER CALENDAR
-    # --------------------------------------------------------
-    
-    other_calendars = [
-        source_calendar
-        for source_calendar in selected_calendars
-        if source_calendar != calendar_name
-    ]
-    
-    if other_calendars:
-    
-        copy_col1, copy_col2 = st.columns([3, 1])
-    
-        with copy_col1:
-    
-            copy_source = st.selectbox(
-                "Copy Open/Closed dates from another calendar",
-                options=["Select a calendar..."] + other_calendars,
-                index=0,
-                key=(
-                    f"copy_source__"
-                    f"{safe_key(calendar_name)}"
-                ),
-            )
-    
-        with copy_col2:
-    
-            st.write("")
-    
-            if st.button(
-                "Copy dates",
-                key=(
-                    f"copy_dates__"
-                    f"{safe_key(calendar_name)}"
-                ),
-                use_container_width=True,
-                disabled=(
-                    copy_source
-                    == "Select a calendar..."
-                ),
-            ):
-    
-                copy_calendar_date_statuses(
-                    source_calendar=copy_source,
-                    destination_calendar=calendar_name,
-                    fiscal_weeks=fiscal_weeks,
-                )
-    
-                st.success(
-                    f"Copied Open and Closed dates from "
-                    f"{copy_source} to {calendar_name}."
-                )
-    
-                st.rerun()
-    
-    action_col1, action_col2, action_col3, spacer = st.columns(
-        [1, 1, 1, 3]
+
+else:
+
+    st.caption(
+        "Each fiscal week is shown separately with all selected "
+        "calendars together."
     )
-    
-    # replacing to add a copy calendar function
-    # st.caption(
-    #     f"Minute rule: {minute_selection_by_calendar[calendar_name]}"
-    # )
 
-    # action_col1, action_col2, action_col3, spacer = st.columns([1, 1, 1, 3])
 
-    with action_col1:
-        if st.button(
-            "Mark all Open",
-            key=f"all_open__{safe_key(calendar_name)}",
-            use_container_width=True,
-        ):
-            mark_all_calendar_dates(calendar_name, fiscal_weeks, "Open")
-            st.rerun()
+# ============================================================
+# VIEW 1: BY CALENDAR
+# ============================================================
 
-    with action_col2:
-        if st.button(
-            "Mark all Closed",
-            key=f"all_closed__{safe_key(calendar_name)}",
-            use_container_width=True,
-        ):
-            mark_all_calendar_dates(calendar_name, fiscal_weeks, "Closed")
-            st.rerun()
+if calendar_view == "By Calendar":
 
-    with action_col3:
-        if st.button(
-            "Clear all",
-            key=f"clear_all__{safe_key(calendar_name)}",
-            use_container_width=True,
-        ):
-            clear_calendar_dates(calendar_name, fiscal_weeks)
-            st.rerun()
+    for calendar_name in selected_calendars:
 
-    header_columns = st.columns([0.7, 1, 1, 1, 1, 1, 1, 1])
-    header_columns[0].markdown("**Fiscal Week**")
+        st.subheader(calendar_name)
 
-    for index, weekday_name in enumerate(WEEKDAY_NAMES, start=1):
-        header_columns[index].markdown(
-            f"<div style='text-align:center'><b>{weekday_name}</b></div>",
-            unsafe_allow_html=True,
+        st.caption(
+            f"Minute rule: "
+            f"{minute_selection_by_calendar[calendar_name]}"
         )
 
-    for week_number in fiscal_weeks:
-        row_columns = st.columns([0.7, 1, 1, 1, 1, 1, 1, 1])
-        row_columns[0].markdown(f"### FW {week_number}")
 
-        week_dates = dates_for_fiscal_week(week_number)
+        # ----------------------------------------------------
+        # COPY DATES FROM ANOTHER CALENDAR
+        # ----------------------------------------------------
 
-        for day_index, calendar_date in enumerate(
-            week_dates,
-            start=1
-        ):
-            with row_columns[day_index]:
-        
-                render_date_button(
-                    calendar_name=calendar_name,
-                    calendar_date=calendar_date,
-                    key_prefix=(
-                        f"calendar_view_"
-                        f"{week_number}"
+        other_calendars = [
+            source_calendar
+            for source_calendar in selected_calendars
+            if source_calendar != calendar_name
+        ]
+
+        if other_calendars:
+
+            copy_col1, copy_col2 = st.columns(
+                [3, 1]
+            )
+
+            with copy_col1:
+
+                copy_source = st.selectbox(
+                    (
+                        "Copy Open/Closed dates "
+                        "from another calendar"
+                    ),
+                    options=(
+                        ["Select a calendar..."]
+                        + other_calendars
+                    ),
+                    index=0,
+                    key=(
+                        f"copy_source__"
+                        f"{safe_key(calendar_name)}"
                     ),
                 )
+
+            with copy_col2:
+
+                st.write("")
+
+                if st.button(
+                    "Copy dates",
+                    key=(
+                        f"copy_dates__"
+                        f"{safe_key(calendar_name)}"
+                    ),
+                    use_container_width=True,
+                    disabled=(
+                        copy_source
+                        == "Select a calendar..."
+                    ),
+                ):
+
+                    copy_calendar_date_statuses(
+                        source_calendar=copy_source,
+                        destination_calendar=calendar_name,
+                        fiscal_weeks=fiscal_weeks,
+                    )
+
+                    st.success(
+                        f"Copied Open and Closed dates "
+                        f"from {copy_source} "
+                        f"to {calendar_name}."
+                    )
+
+                    st.rerun()
+
+
+        # ----------------------------------------------------
+        # BULK ACTION BUTTONS
+        # ----------------------------------------------------
+
+        action_col1, action_col2, action_col3, spacer = (
+            st.columns([1, 1, 1, 3])
+        )
+
+        with action_col1:
+
+            if st.button(
+                "Mark all Open",
+                key=(
+                    f"all_open__"
+                    f"{safe_key(calendar_name)}__"
+                    f"by_calendar"
+                ),
+                use_container_width=True,
+            ):
+
+                mark_all_calendar_dates(
+                    calendar_name,
+                    fiscal_weeks,
+                    "Open"
+                )
+
+                st.rerun()
+
+        with action_col2:
+
+            if st.button(
+                "Mark all Closed",
+                key=(
+                    f"all_closed__"
+                    f"{safe_key(calendar_name)}__"
+                    f"by_calendar"
+                ),
+                use_container_width=True,
+            ):
+
+                mark_all_calendar_dates(
+                    calendar_name,
+                    fiscal_weeks,
+                    "Closed"
+                )
+
+                st.rerun()
+
+        with action_col3:
+
+            if st.button(
+                "Clear all",
+                key=(
+                    f"clear_all__"
+                    f"{safe_key(calendar_name)}__"
+                    f"by_calendar"
+                ),
+                use_container_width=True,
+            ):
+
+                clear_calendar_dates(
+                    calendar_name,
+                    fiscal_weeks
+                )
+
+                st.rerun()
+
+
+        # ----------------------------------------------------
+        # WEEKDAY HEADERS
+        # ----------------------------------------------------
+
+        header_columns = st.columns(
+            [0.7, 1, 1, 1, 1, 1, 1, 1]
+        )
+
+        header_columns[0].markdown(
+            "**Fiscal Week**"
+        )
+
+        for index, weekday_name in enumerate(
+            WEEKDAY_NAMES,
+            start=1
+        ):
+
+            header_columns[index].markdown(
+                (
+                    "<div style='text-align:center'>"
+                    f"<b>{weekday_name}</b>"
+                    "</div>"
+                ),
+                unsafe_allow_html=True,
+            )
+
+
+        # ----------------------------------------------------
+        # FISCAL WEEK ROWS
+        # ----------------------------------------------------
+
+        for week_number in fiscal_weeks:
+
+            row_columns = st.columns(
+                [0.7, 1, 1, 1, 1, 1, 1, 1]
+            )
+
+            row_columns[0].markdown(
+                f"### FW {week_number}"
+            )
+
+            week_dates = dates_for_fiscal_week(
+                week_number
+            )
+
+            for day_index, calendar_date in enumerate(
+                week_dates,
+                start=1
+            ):
+
+                with row_columns[day_index]:
+                    render_date_button(
+                        calendar_name=calendar_name,
+                        calendar_date=calendar_date,
+                        key_prefix=(
+                            f"by_calendar_"
+                            f"{week_number}"
+                        ),
+                    )
+
+
+        # ----------------------------------------------------
+        # SUMMARY - ONCE PER CALENDAR
+        # ----------------------------------------------------
+
+        counts = selected_date_summary(
+            calendar_name,
+            fiscal_weeks
+        )
+
+        summary_col1, summary_col2, summary_col3 = (
+            st.columns(3)
+        )
+
+        summary_col1.metric(
+            "Open dates",
+            counts["Open"]
+        )
+
+        summary_col2.metric(
+            "Closed dates",
+            counts["Closed"]
+        )
+
+        summary_col3.metric(
+            "Not selected",
+            counts["Not selected"]
+        )
+
+        st.divider()
+
+
+# ============================================================
+# VIEW 2: BY FISCAL WEEK
+# ============================================================
+
+else:
+
+    for week_number in fiscal_weeks:
+
+        week_start = fiscal_week_start(
+            week_number
+        )
+
+        week_end = (
+            week_start
+            + timedelta(days=6)
+        )
+
+        st.subheader(
+            f"Fiscal Week {week_number}"
+        )
+
+        st.caption(
+            f"{week_start.strftime('%b %d, %Y')} "
+            f"through "
+            f"{week_end.strftime('%b %d, %Y')}"
+        )
+
+
+        # ----------------------------------------------------
+        # WEEKDAY HEADERS
+        # ----------------------------------------------------
+
+        header_columns = st.columns(
+            [1.4, 1, 1, 1, 1, 1, 1, 1]
+        )
+
+        header_columns[0].markdown(
+            "**Calendar**"
+        )
+
+        for index, weekday_name in enumerate(
+            WEEKDAY_NAMES,
+            start=1
+        ):
+
+            header_columns[index].markdown(
+                (
+                    "<div style='text-align:center'>"
+                    f"<b>{weekday_name}</b>"
+                    "</div>"
+                ),
+                unsafe_allow_html=True,
+            )
+
+
+        # ----------------------------------------------------
+        # ONE ROW FOR EACH CALENDAR
+        # ----------------------------------------------------
+
+        week_dates = dates_for_fiscal_week(
+            week_number
+        )
+
+        for calendar_name in selected_calendars:
+
+            row_columns = st.columns(
+                [1.4, 1, 1, 1, 1, 1, 1, 1]
+            )
+
+            with row_columns[0]:
+
+                st.markdown(
+                    f"**{calendar_name}**"
+                )
+
+                st.caption(
+                    minute_selection_by_calendar[
+                        calendar_name
+                    ]
+                )
+
+            for day_index, calendar_date in enumerate(
+                week_dates,
+                start=1
+            ):
+
+                with row_columns[day_index]:
+                    render_date_button(
+                        calendar_name=calendar_name,
+                        calendar_date=calendar_date,
+                        key_prefix=(
+                            f"by_fiscal_week_"
+                            f"{week_number}"
+                        ),
+                    )
+
+
+        # ----------------------------------------------------
+        # OPTIONAL WEEK SUMMARY
+        # ----------------------------------------------------
+
+        week_open_count = 0
+        week_closed_count = 0
+        week_not_selected_count = 0
+
+        for calendar_name in selected_calendars:
+
+            for calendar_date in week_dates:
+
+                status = get_day_status(
+                    calendar_name,
+                    calendar_date
+                )
+
+                if status == "Open":
+                    week_open_count += 1
+
+                elif status == "Closed":
+                    week_closed_count += 1
+
+                else:
+                    week_not_selected_count += 1
+
+        summary_col1, summary_col2, summary_col3 = (
+            st.columns(3)
+        )
+
+        summary_col1.metric(
+            "Open dates",
+            week_open_count
+        )
+
+        summary_col2.metric(
+            "Closed dates",
+            week_closed_count
+        )
+
+        summary_col3.metric(
+            "Not selected",
+            week_not_selected_count
+        )
+
+        st.divider()
+
+# replacing to enable a view grouped by fiscal week
+# st.header("Step 4: Mark calendar dates")
+
+# st.info(
+#     "Each date starts gray and is excluded from export. Click once to mark it "
+#     "green/Open, click again to mark it red/Closed, and click a third time to "
+#     "return it to gray/Not selected. Include seven normally scheduled days at "
+#     "the end when a 7D automatic repeat should be added."
+# )
+
+# st.caption("Click a date to cycle: ⚪ Not Selected → 🟢 Open → 🔴 Closed")
+
+# for calendar_name in selected_calendars:
+#     st.subheader(calendar_name)
+    
+#     st.caption(
+#         f"Minute rule: {minute_selection_by_calendar[calendar_name]}"
+#     )
+    
+#     # --------------------------------------------------------
+#     # COPY DATES FROM ANOTHER CALENDAR
+#     # --------------------------------------------------------
+    
+#     other_calendars = [
+#         source_calendar
+#         for source_calendar in selected_calendars
+#         if source_calendar != calendar_name
+#     ]
+    
+#     if other_calendars:
+    
+#         copy_col1, copy_col2 = st.columns([3, 1])
+    
+#         with copy_col1:
+    
+#             copy_source = st.selectbox(
+#                 "Copy Open/Closed dates from another calendar",
+#                 options=["Select a calendar..."] + other_calendars,
+#                 index=0,
+#                 key=(
+#                     f"copy_source__"
+#                     f"{safe_key(calendar_name)}"
+#                 ),
+#             )
+    
+#         with copy_col2:
+    
+#             st.write("")
+    
+#             if st.button(
+#                 "Copy dates",
+#                 key=(
+#                     f"copy_dates__"
+#                     f"{safe_key(calendar_name)}"
+#                 ),
+#                 use_container_width=True,
+#                 disabled=(
+#                     copy_source
+#                     == "Select a calendar..."
+#                 ),
+#             ):
+    
+#                 copy_calendar_date_statuses(
+#                     source_calendar=copy_source,
+#                     destination_calendar=calendar_name,
+#                     fiscal_weeks=fiscal_weeks,
+#                 )
+    
+#                 st.success(
+#                     f"Copied Open and Closed dates from "
+#                     f"{copy_source} to {calendar_name}."
+#                 )
+    
+#                 st.rerun()
+    
+#     action_col1, action_col2, action_col3, spacer = st.columns(
+#         [1, 1, 1, 3]
+#     )
+    
+#     # replacing to add a copy calendar function
+#     # st.caption(
+#     #     f"Minute rule: {minute_selection_by_calendar[calendar_name]}"
+#     # )
+
+#     # action_col1, action_col2, action_col3, spacer = st.columns([1, 1, 1, 3])
+
+#     with action_col1:
+#         if st.button(
+#             "Mark all Open",
+#             key=f"all_open__{safe_key(calendar_name)}",
+#             use_container_width=True,
+#         ):
+#             mark_all_calendar_dates(calendar_name, fiscal_weeks, "Open")
+#             st.rerun()
+
+#     with action_col2:
+#         if st.button(
+#             "Mark all Closed",
+#             key=f"all_closed__{safe_key(calendar_name)}",
+#             use_container_width=True,
+#         ):
+#             mark_all_calendar_dates(calendar_name, fiscal_weeks, "Closed")
+#             st.rerun()
+
+#     with action_col3:
+#         if st.button(
+#             "Clear all",
+#             key=f"clear_all__{safe_key(calendar_name)}",
+#             use_container_width=True,
+#         ):
+#             clear_calendar_dates(calendar_name, fiscal_weeks)
+#             st.rerun()
+
+#     header_columns = st.columns([0.7, 1, 1, 1, 1, 1, 1, 1])
+#     header_columns[0].markdown("**Fiscal Week**")
+
+#     for index, weekday_name in enumerate(WEEKDAY_NAMES, start=1):
+#         header_columns[index].markdown(
+#             f"<div style='text-align:center'><b>{weekday_name}</b></div>",
+#             unsafe_allow_html=True,
+#         )
+
+#     for week_number in fiscal_weeks:
+#         row_columns = st.columns([0.7, 1, 1, 1, 1, 1, 1, 1])
+#         row_columns[0].markdown(f"### FW {week_number}")
+
+#         week_dates = dates_for_fiscal_week(week_number)
+
+#         for day_index, calendar_date in enumerate(
+#             week_dates,
+#             start=1
+#         ):
+#             with row_columns[day_index]:
         
-    counts = selected_date_summary(calendar_name, fiscal_weeks)
-    summary_col1, summary_col2, summary_col3 = st.columns(3)
-    summary_col1.metric("Open dates", counts["Open"])
-    summary_col2.metric("Closed dates", counts["Closed"])
-    summary_col3.metric("Not selected", counts["Not selected"])
-
-    st.divider()
+#                 render_date_button(
+#                     calendar_name=calendar_name,
+#                     calendar_date=calendar_date,
+#                     key_prefix=(
+#                         f"calendar_view_"
+#                         f"{week_number}"
+#                     ),
+#                 )
         
-        # updating this code so that entire button changes color
-        # for day_index, calendar_date in enumerate(week_dates, start=1):
-        #     status = get_day_status(calendar_name, calendar_date)
-        #     style = STATUS_STYLE[status]
-        #     button_label = (
-        #         f"{style['icon']} "
-        #         f"{calendar_date.strftime('%b')} "
-        #         f"{calendar_date.day}"
-        #     )
+#     counts = selected_date_summary(calendar_name, fiscal_weeks)
+#     summary_col1, summary_col2, summary_col3 = st.columns(3)
+#     summary_col1.metric("Open dates", counts["Open"])
+#     summary_col2.metric("Closed dates", counts["Closed"])
+#     summary_col3.metric("Not selected", counts["Not selected"])
+
+#     st.divider()
+        
+#         # updating this code so that entire button changes color
+#         # for day_index, calendar_date in enumerate(week_dates, start=1):
+#         #     status = get_day_status(calendar_name, calendar_date)
+#         #     style = STATUS_STYLE[status]
+#         #     button_label = (
+#         #         f"{style['icon']} "
+#         #         f"{calendar_date.strftime('%b')} "
+#         #         f"{calendar_date.day}"
+#         #     )
 
 
-        #     with row_columns[day_index]:
-        #         if st.button(
-        #             button_label,
-        #             key=(
-        #                 f"day_button__{safe_key(calendar_name)}__"
-        #                 f"{calendar_date.isoformat()}"
-        #             ),
-        #             use_container_width=True,
+#         #     with row_columns[day_index]:
+#         #         if st.button(
+#         #             button_label,
+#         #             key=(
+#         #                 f"day_button__{safe_key(calendar_name)}__"
+#         #                 f"{calendar_date.isoformat()}"
+#         #             ),
+#         #             use_container_width=True,
                    
-        #         ):
-        #             cycle_day_status(calendar_name, calendar_date)
-        #             st.rerun()
+#         #         ):
+#         #             cycle_day_status(calendar_name, calendar_date)
+#         #             st.rerun()
 
 
 # ============================================================
