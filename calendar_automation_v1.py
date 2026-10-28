@@ -707,6 +707,198 @@ def validate_minimum_selected_days(
         invalid_calendars,
     )
 
+def copy_calendar_date_statuses(
+    source_calendar,
+    destination_calendar,
+    fiscal_weeks,
+):
+    """
+    Copy only Open and Closed dates from the source calendar.
+
+    Gray source dates do not overwrite the destination calendar.
+    """
+
+    for week_number in fiscal_weeks:
+
+        for calendar_date in dates_for_fiscal_week(
+            week_number
+        ):
+
+            source_status = get_day_status(
+                source_calendar,
+                calendar_date
+            )
+
+            if source_status not in [
+                "Open",
+                "Closed",
+            ]:
+                continue
+
+            destination_key = date_status_key(
+                destination_calendar,
+                calendar_date
+            )
+
+            st.session_state[
+                destination_key
+            ] = source_status
+
+def render_weekday_headers():
+    """
+    Display fiscal-week and weekday column headers.
+    """
+
+    header_columns = st.columns(
+        [0.8, 1, 1, 1, 1, 1, 1, 1]
+    )
+
+    header_columns[0].markdown(
+        "**Fiscal Week**"
+    )
+
+    for index, weekday_name in enumerate(
+        WEEKDAY_NAMES,
+        start=1,
+    ):
+        header_columns[index].markdown(
+            (
+                "<div style='"
+                "text-align:center;"
+                "font-weight:700;"
+                "font-size:0.85rem;"
+                "'>"
+                f"{weekday_name}"
+                "</div>"
+            ),
+            unsafe_allow_html=True,
+        )
+
+
+def render_one_calendar_week(
+    calendar_name,
+    week_number,
+    key_prefix,
+    show_week_label=True,
+):
+    """
+    Render one Sunday-through-Saturday row
+    for one calendar and fiscal week.
+    """
+
+    week_dates = dates_for_fiscal_week(
+        week_number
+    )
+
+    if show_week_label:
+
+        row_columns = st.columns(
+            [0.8, 1, 1, 1, 1, 1, 1, 1]
+        )
+
+        row_columns[0].markdown(
+            f"**FW {week_number}**"
+        )
+
+        date_columns = row_columns[1:]
+
+    else:
+
+        row_columns = st.columns(
+            [1.35, 1, 1, 1, 1, 1, 1, 1]
+        )
+
+        row_columns[0].markdown(
+            f"**{calendar_name}**"
+        )
+
+        date_columns = row_columns[1:]
+
+    for day_index, calendar_date in enumerate(
+        week_dates
+    ):
+
+        with date_columns[day_index]:
+
+            render_date_button(
+                calendar_name=calendar_name,
+                calendar_date=calendar_date,
+                key_prefix=(
+                    f"{key_prefix}_"
+                    f"fw_{week_number}"
+                ),
+            )
+
+
+def render_copy_controls(
+    destination_calendar,
+    selected_calendars,
+    fiscal_weeks,
+    key_prefix,
+):
+    """
+    Display controls for copying another calendar's dates
+    into the destination calendar.
+    """
+
+    source_options = [
+        calendar_name
+        for calendar_name in selected_calendars
+        if calendar_name != destination_calendar
+    ]
+
+    if not source_options:
+        st.caption(
+            "Select more than one calendar to use "
+            "the copy-calendar feature."
+        )
+
+        return
+
+    copy_col1, copy_col2 = st.columns(
+        [3, 1]
+    )
+
+    with copy_col1:
+
+        source_calendar = st.selectbox(
+            "Copy Open and Closed dates from",
+            options=source_options,
+            key=(
+                f"copy_source__"
+                f"{safe_key(destination_calendar)}__"
+                f"{safe_key(key_prefix)}"
+            ),
+        )
+
+    with copy_col2:
+
+        st.write("")
+
+        if st.button(
+            "Copy dates",
+            key=(
+                f"copy_button__"
+                f"{safe_key(destination_calendar)}__"
+                f"{safe_key(key_prefix)}"
+            ),
+            use_container_width=True,
+        ):
+
+            copy_calendar_date_statuses(
+                source_calendar=source_calendar,
+                destination_calendar=destination_calendar,
+                fiscal_weeks=fiscal_weeks,
+            )
+
+            st.success(
+                f"Copied Open and Closed dates from "
+                f"{source_calendar} into "
+                f"{destination_calendar}."
+            )
+
+            st.rerun()
+
 
 # ============================================================
 # STEP 1: DATE RANGE SELECTION
@@ -1717,11 +1909,77 @@ st.caption("Click a date to cycle: ⚪ Not Selected → 🟢 Open → 🔴 Close
 
 for calendar_name in selected_calendars:
     st.subheader(calendar_name)
+    
     st.caption(
         f"Minute rule: {minute_selection_by_calendar[calendar_name]}"
     )
+    
+    # --------------------------------------------------------
+    # COPY DATES FROM ANOTHER CALENDAR
+    # --------------------------------------------------------
+    
+    other_calendars = [
+        source_calendar
+        for source_calendar in selected_calendars
+        if source_calendar != calendar_name
+    ]
+    
+    if other_calendars:
+    
+        copy_col1, copy_col2 = st.columns([3, 1])
+    
+        with copy_col1:
+    
+            copy_source = st.selectbox(
+                "Copy Open/Closed dates from another calendar",
+                options=["Select a calendar..."] + other_calendars,
+                index=0,
+                key=(
+                    f"copy_source__"
+                    f"{safe_key(calendar_name)}"
+                ),
+            )
+    
+        with copy_col2:
+    
+            st.write("")
+    
+            if st.button(
+                "Copy dates",
+                key=(
+                    f"copy_dates__"
+                    f"{safe_key(calendar_name)}"
+                ),
+                use_container_width=True,
+                disabled=(
+                    copy_source
+                    == "Select a calendar..."
+                ),
+            ):
+    
+                copy_calendar_date_statuses(
+                    source_calendar=copy_source,
+                    destination_calendar=calendar_name,
+                    fiscal_weeks=fiscal_weeks,
+                )
+    
+                st.success(
+                    f"Copied Open and Closed dates from "
+                    f"{copy_source} to {calendar_name}."
+                )
+    
+                st.rerun()
+    
+    action_col1, action_col2, action_col3, spacer = st.columns(
+        [1, 1, 1, 3]
+    )
+    
+    # replacing to add a copy calendar function
+    # st.caption(
+    #     f"Minute rule: {minute_selection_by_calendar[calendar_name]}"
+    # )
 
-    action_col1, action_col2, action_col3, spacer = st.columns([1, 1, 1, 3])
+    # action_col1, action_col2, action_col3, spacer = st.columns([1, 1, 1, 3])
 
     with action_col1:
         if st.button(
