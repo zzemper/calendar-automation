@@ -1858,6 +1858,11 @@ for calendar_name in selected_calendars:
 
 st.markdown("#### Selected-day validation")
 
+st.info("To ensure the repeat can be automatically added "
+        "without error, this section tests to see if you've "
+        "input at least 7 days to anchor a repeat on."
+)
+
 validation_rows = []
 
 for calendar_name in selected_calendars:
