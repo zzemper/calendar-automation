@@ -11,6 +11,7 @@ from datetime import date, datetime, time, timedelta
 
 import pandas as pd
 import streamlit as st
+from streamlit_extras.stylable_container import stylable_container
 # no longer needed bc creating a csv file
 # from openpyxl.styles import Alignment, Font, PatternFill
 # from openpyxl.utils import get_column_letter
@@ -441,6 +442,138 @@ def build_output_dataframe(
         ).reset_index(drop=True)
 
     return output_df
+
+# new functions to change color of buttons entirely
+def get_status_button_colors(status):
+    """
+    Return accessible colors for a date button.
+
+    Colors:
+    - Gray: Not selected
+    - Green: Open
+    - Red: Closed
+    """
+
+    if status == "Open":
+        return {
+            "background": "#188038",
+            "hover": "#137333",
+            "text": "#FFFFFF",
+            "border": "#0D652D",
+        }
+
+    if status == "Closed":
+        return {
+            "background": "#D93025",
+            "hover": "#B31412",
+            "text": "#FFFFFF",
+            "border": "#A50E0E",
+        }
+
+    return {
+        "background": "#E0E0E0",
+        "hover": "#C7C7C7",
+        "text": "#202124",
+        "border": "#9AA0A6",
+    }
+
+
+def render_date_button(
+    calendar_name,
+    calendar_date,
+    key_prefix,
+):
+    """
+    Render one fully colored clickable calendar-day button.
+
+    Clicking cycles:
+    Not selected -> Open -> Closed -> Not selected
+    """
+
+    status = get_day_status(
+        calendar_name,
+        calendar_date
+    )
+
+    colors = get_status_button_colors(status)
+
+    if status == "Open":
+        icon = "●"
+    elif status == "Closed":
+        icon = "■"
+    else:
+        icon = "○"
+
+    button_label = (
+        f"{icon} "
+        f"{calendar_date.strftime('%b')} "
+        f"{calendar_date.day}"
+    )
+
+    container_key = (
+        f"styled_date__"
+        f"{safe_key(calendar_name)}__"
+        f"{calendar_date.isoformat()}__"
+        f"{safe_key(key_prefix)}"
+    )
+
+    button_key = (
+        f"date_button__"
+        f"{safe_key(calendar_name)}__"
+        f"{calendar_date.isoformat()}__"
+        f"{safe_key(key_prefix)}"
+    )
+
+    with stylable_container(
+        key=container_key,
+        css_styles=f"""
+        button {{
+            background-color: {colors["background"]} !important;
+            color: {colors["text"]} !important;
+            border: 2px solid {colors["border"]} !important;
+            border-radius: 7px !important;
+            min-height: 52px !important;
+            width: 100% !important;
+            font-weight: 700 !important;
+            font-size: 0.92rem !important;
+            padding: 0.35rem 0.2rem !important;
+            transition:
+                background-color 0.1s ease,
+                border-color 0.1s ease,
+                transform 0.1s ease !important;
+        }}
+
+        button:hover {{
+            background-color: {colors["hover"]} !important;
+            border-color: {colors["border"]} !important;
+            color: {colors["text"]} !important;
+            transform: scale(1.02);
+        }}
+
+        button:focus {{
+            outline: 4px solid #1A73E8 !important;
+            outline-offset: 2px !important;
+        }}
+
+        button p {{
+            color: {colors["text"]} !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+        }}
+        """,
+    ):
+        if st.button(
+            button_label,
+            key=button_key,
+            use_container_width=True,
+        ):
+            cycle_day_status(
+                calendar_name,
+                calendar_date
+            )
+
+            st.rerun()
+
 
 # no longer need this function bc exporting csv
 # def create_excel_file(output_df):
@@ -1632,29 +1765,21 @@ for calendar_name in selected_calendars:
 
         week_dates = dates_for_fiscal_week(week_number)
 
-        for day_index, calendar_date in enumerate(week_dates, start=1):
-            status = get_day_status(calendar_name, calendar_date)
-            style = STATUS_STYLE[status]
-            button_label = (
-                f"{style['icon']} "
-                f"{calendar_date.strftime('%b')} "
-                f"{calendar_date.day}"
-            )
-
-
+        for day_index, calendar_date in enumerate(
+            week_dates,
+            start=1
+        ):
             with row_columns[day_index]:
-                if st.button(
-                    button_label,
-                    key=(
-                        f"day_button__{safe_key(calendar_name)}__"
-                        f"{calendar_date.isoformat()}"
+        
+                render_date_button(
+                    calendar_name=calendar_name,
+                    calendar_date=calendar_date,
+                    key_prefix=(
+                        f"calendar_view_"
+                        f"{week_number}"
                     ),
-                    use_container_width=True,
-                   
-                ):
-                    cycle_day_status(calendar_name, calendar_date)
-                    st.rerun()
-
+                )
+        
     counts = selected_date_summary(calendar_name, fiscal_weeks)
     summary_col1, summary_col2, summary_col3 = st.columns(3)
     summary_col1.metric("Open dates", counts["Open"])
@@ -1662,6 +1787,30 @@ for calendar_name in selected_calendars:
     summary_col3.metric("Not selected", counts["Not selected"])
 
     st.divider()
+        
+        # updating this code so that entire button changes color
+        # for day_index, calendar_date in enumerate(week_dates, start=1):
+        #     status = get_day_status(calendar_name, calendar_date)
+        #     style = STATUS_STYLE[status]
+        #     button_label = (
+        #         f"{style['icon']} "
+        #         f"{calendar_date.strftime('%b')} "
+        #         f"{calendar_date.day}"
+        #     )
+
+
+        #     with row_columns[day_index]:
+        #         if st.button(
+        #             button_label,
+        #             key=(
+        #                 f"day_button__{safe_key(calendar_name)}__"
+        #                 f"{calendar_date.isoformat()}"
+        #             ),
+        #             use_container_width=True,
+                   
+        #         ):
+        #             cycle_day_status(calendar_name, calendar_date)
+        #             st.rerun()
 
 
 # ============================================================
