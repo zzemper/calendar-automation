@@ -65,9 +65,9 @@ AVAILABLE_CALENDARS = [
 ]
 
 MINUTE_OPTIONS = [
-    "First minute of the day",
-    "Last minute of the day",
-    "2nd to last minute of the day",
+    "First minute of the day (12:00 - 12:01)",
+    "Last minute of the day (11:59 - 12:00)",
+    "2nd to last minute of the day (11:58 - 11:59)",
 ]
 
 DAY_STATUS_SEQUENCE = ["Not selected", "Open", "Closed"]
