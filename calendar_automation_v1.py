@@ -173,11 +173,11 @@ def mark_all_calendar_dates(calendar_name, fiscal_weeks, status):
 
 def build_effective_datetimes(calendar_date, minute_option):
     """Return the two *Eff values required for one selected date."""
-    if minute_option == "First minute of the day":
+    if minute_option == "First minute of the day (12:00 - 12:01)":
         first_record = datetime.combine(calendar_date, time(0, 0))
         second_record = datetime.combine(calendar_date, time(0, 1))
 
-    elif minute_option == "Last minute of the day":
+    elif minute_option == "Last minute of the day (11:59 - 12:00)":
         first_record = datetime.combine(calendar_date, time(23, 59))
         second_record = datetime.combine(
             calendar_date + timedelta(days=1),
@@ -195,8 +195,11 @@ def build_output_dataframe(
     selected_calendars,
     fiscal_weeks,
     minute_selection_by_calendar,
-    description_by_calendar,
+    #description_by_calendar,
     add_repeat,
+    description_mode,
+    overall_description,
+    descriptions_by_calendar,
 ):
     """
     Build the final import-format dataframe.
@@ -219,12 +222,12 @@ def build_output_dataframe(
             ]
         )
 
-        calendar_description = (
-            description_by_calendar.get(
-                calendar_name,
-                ""
-            ).strip()
-        )
+        # calendar_description = (
+        #     description_by_calendar.get(
+        #         calendar_name,
+        #         ""
+        #     ).strip()
+        # )
 
         calendar_rows = []
         selected_calendar_dates = []
@@ -255,10 +258,31 @@ def build_output_dataframe(
                         minute_option
                     )
                 )
-                
+                # updated to include sarahs descriptions change
                 if status == "Open":
 
-                    # First record = OPEN
+                    first_opt_value = 2
+                    second_opt_value = 1
+                
+                    first_description = build_row_description(
+                        description_mode=description_mode,
+                        calendar_name=calendar_name,
+                        calendar_date=calendar_date,
+                        opt_value=first_opt_value,
+                        overall_description=overall_description,
+                        descriptions_by_calendar=descriptions_by_calendar,
+                    )
+                
+                    second_description = build_row_description(
+                        description_mode=description_mode,
+                        calendar_name=calendar_name,
+                        calendar_date=calendar_date,
+                        opt_value=second_opt_value,
+                        overall_description=overall_description,
+                        descriptions_by_calendar=descriptions_by_calendar,
+                    )
+                
+                    # First record = Open
                     calendar_rows.append(
                         {
                             "*Cal": calendar_name,
@@ -266,14 +290,14 @@ def build_output_dataframe(
                             "AllocWgt": 0,
                             "AltCal": "",
                             "Avail": 0,
-                            "Descr": calendar_description,
-                            "Opt": 2,
+                            "Descr": first_description,
+                            "Opt": first_opt_value,
                             "PerWgt": 0,
                             "Repeat": "",
                         }
                     )
                 
-                    # Second record = CLOSED
+                    # Second record = Closed
                     calendar_rows.append(
                         {
                             "*Cal": calendar_name,
@@ -281,18 +305,67 @@ def build_output_dataframe(
                             "AllocWgt": 0,
                             "AltCal": "",
                             "Avail": 0,
-                            "Descr": calendar_description,
-                            "Opt": 1,
+                            "Descr": second_description,
+                            "Opt": second_opt_value,
                             "PerWgt": 0,
                             "Repeat": "",
                         }
                     )
+                # if status == "Open":
+
+                #     # First record = OPEN
+                #     calendar_rows.append(
+                #         {
+                #             "*Cal": calendar_name,
+                #             "*Eff": first_eff,
+                #             "AllocWgt": 0,
+                #             "AltCal": "",
+                #             "Avail": 0,
+                #             "Descr": calendar_description,
+                #             "Opt": 2,
+                #             "PerWgt": 0,
+                #             "Repeat": "",
+                #         }
+                #     )
                 
+                #     # Second record = CLOSED
+                #     calendar_rows.append(
+                #         {
+                #             "*Cal": calendar_name,
+                #             "*Eff": second_eff,
+                #             "AllocWgt": 0,
+                #             "AltCal": "",
+                #             "Avail": 0,
+                #             "Descr": calendar_description,
+                #             "Opt": 1,
+                #             "PerWgt": 0,
+                #             "Repeat": "",
+                #         }
+                #     )
                 else:
+
+                    first_opt_value = 1
+                    second_opt_value = 1
                 
-                    # Closed day
-                    # Both records remain CLOSED
+                    first_description = build_row_description(
+                        description_mode=description_mode,
+                        calendar_name=calendar_name,
+                        calendar_date=calendar_date,
+                        opt_value=first_opt_value,
+                        overall_description=overall_description,
+                        descriptions_by_calendar=descriptions_by_calendar,
+                    )
                 
+                    second_description = build_row_description(
+                        description_mode=description_mode,
+                        calendar_name=calendar_name,
+                        calendar_date=calendar_date,
+                        opt_value=second_opt_value,
+                        overall_description=overall_description,
+                        descriptions_by_calendar=descriptions_by_calendar,
+                    )
+                
+                    # First record = Closed
                     calendar_rows.append(
                         {
                             "*Cal": calendar_name,
@@ -300,13 +373,14 @@ def build_output_dataframe(
                             "AllocWgt": 0,
                             "AltCal": "",
                             "Avail": 0,
-                            "Descr": calendar_description,
-                            "Opt": 1,
+                            "Descr": first_description,
+                            "Opt": first_opt_value,
                             "PerWgt": 0,
                             "Repeat": "",
                         }
                     )
                 
+                    # Second record = Closed
                     calendar_rows.append(
                         {
                             "*Cal": calendar_name,
@@ -314,12 +388,47 @@ def build_output_dataframe(
                             "AllocWgt": 0,
                             "AltCal": "",
                             "Avail": 0,
-                            "Descr": calendar_description,
-                            "Opt": 1,
+                            "Descr": second_description,
+                            "Opt": second_opt_value,
                             "PerWgt": 0,
                             "Repeat": "",
                         }
                     )
+                
+                # else:
+                
+                #     # Closed day
+                #     # Both records remain CLOSED
+                
+                #     calendar_rows.append(
+                #         {
+                #             "*Cal": calendar_name,
+                #             "*Eff": first_eff,
+                #             "AllocWgt": 0,
+                #             "AltCal": "",
+                #             "Avail": 0,
+                #             "Descr": calendar_description,
+                #             "Opt": 1,
+                #             "PerWgt": 0,
+                #             "Repeat": "",
+                #         }
+                #     )
+                
+                #     calendar_rows.append(
+                #         {
+                #             "*Cal": calendar_name,
+                #             "*Eff": second_eff,
+                #             "AllocWgt": 0,
+                #             "AltCal": "",
+                #             "Avail": 0,
+                #             "Descr": calendar_description,
+                #             "Opt": 1,
+                #             "PerWgt": 0,
+                #             "Repeat": "",
+                #         }
+                #     )
+                
+                
                 # if status == "Open":
                 #     opt_value = 2
                 # else:
@@ -411,7 +520,7 @@ def build_output_dataframe(
                     "AltCal": "",
                     "Avail": 0,
                     "Descr": (
-                        calendar_description
+                        overall_description
                     ),
                     "Opt": 5,
                     "PerWgt": 0,
@@ -883,6 +992,62 @@ def render_copy_controls(
 
             st.rerun()
 
+def build_row_description(
+    description_mode,
+    calendar_name,
+    calendar_date,
+    opt_value,
+    overall_description="",
+    descriptions_by_calendar=None,
+):
+    """
+    Return the Descr value for one output record.
+
+    Opt values:
+    - Opt 2 = Open
+    - Opt 1 = Closed
+    """
+
+    if description_mode == "Daily descriptions":
+
+        weekday_labels = {
+            0: "mon",
+            1: "tues",
+            2: "wed",
+            3: "thurs",
+            4: "fri",
+            5: "sat",
+            6: "sun",
+        }
+
+        weekday_label = weekday_labels[
+            calendar_date.weekday()
+        ]
+
+        if opt_value == 2:
+            row_status = "open"
+        else:
+            row_status = "close"
+
+        return f"{weekday_label} {row_status}"
+
+    if description_mode == "No description":
+        return ""
+
+    if description_mode == "Description overall":
+        return overall_description.strip()
+
+    if description_mode == "Description by calendar":
+
+        if descriptions_by_calendar is None:
+            return ""
+
+        return descriptions_by_calendar.get(
+            calendar_name,
+            ""
+        ).strip()
+
+    return ""
 
 # ============================================================
 # STEP 1: DATE RANGE SELECTION
@@ -2490,21 +2655,118 @@ st.info(
     "will be placed in the Descr column for that calendar."
 )
 
-description_by_calendar = {}
 
-for calendar_name in selected_calendars:
+# ============================================================
+# DESCRIPTION OPTIONS
+# ============================================================
 
-    description_by_calendar[
-        calendar_name
-    ] = st.text_input(
-        f"Optional description for {calendar_name}",
-        value="",
-        placeholder="Ex) 'Turkeys 2026'",
-        key=(
-            "description__"
-            + safe_key(calendar_name)
-        ),
+st.subheader("Descriptions")
+
+description_mode = st.selectbox(
+    "How would you like to add descriptions?",
+    options=[
+        "Daily descriptions",
+        "No description",
+        "Description overall",
+        "Description by calendar",
+    ],
+    index=0,
+    key="description_mode",
+    help=(
+        "Daily descriptions automatically create values such as "
+        "'mon open' and 'mon close'. Description overall applies "
+        "one description to every exported row. Description by "
+        "calendar allows a different description for each calendar."
+    ),
+)
+
+overall_description = ""
+descriptions_by_calendar = {}
+
+
+# ------------------------------------------------------------
+# DAILY DESCRIPTIONS
+# ------------------------------------------------------------
+
+if description_mode == "Daily descriptions":
+
+    st.caption(
+        "Descriptions will be generated automatically for every "
+        "output row, such as 'mon open', 'mon close', "
+        "'tues open', or 'tues close'."
     )
+
+
+# ------------------------------------------------------------
+# NO DESCRIPTION
+# ------------------------------------------------------------
+
+elif description_mode == "No description":
+
+    st.caption(
+        "The Descr column will be blank for every output row."
+    )
+
+
+# ------------------------------------------------------------
+# ONE DESCRIPTION FOR ALL ROWS
+# ------------------------------------------------------------
+
+elif description_mode == "Description overall":
+
+    overall_description = st.text_input(
+        "Description for all output rows",
+        key="overall_description",
+        placeholder="Enter one description",
+    )
+
+    st.caption(
+        "This description will be placed in the Descr column "
+        "for every selected calendar and date."
+    )
+
+
+# ------------------------------------------------------------
+# ONE DESCRIPTION FOR EACH CALENDAR
+# ------------------------------------------------------------
+
+elif description_mode == "Description by calendar":
+
+    st.caption(
+        "Enter a separate description for each selected calendar."
+    )
+
+    for calendar_name in selected_calendars:
+
+        descriptions_by_calendar[
+            calendar_name
+        ] = st.text_input(
+            f"Description for {calendar_name}",
+            key=(
+                f"calendar_description__"
+                f"{safe_key(calendar_name)}"
+            ),
+            placeholder=(
+                f"Enter a description for {calendar_name}"
+            ),
+        )
+
+# old simple description inputs by calendar
+# description_by_calendar = {}
+
+# for calendar_name in selected_calendars:
+
+#     description_by_calendar[
+#         calendar_name
+#     ] = st.text_input(
+#         f"Optional description for {calendar_name}",
+#         value="",
+#         placeholder="Ex) 'Turkeys 2026'",
+#         key=(
+#             "description__"
+#             + safe_key(calendar_name)
+#         ),
+#     )
 
 
 # ============================================================
@@ -2577,14 +2839,26 @@ add_repeat = st.checkbox(
 output_df = build_output_dataframe(
     selected_calendars=selected_calendars,
     fiscal_weeks=fiscal_weeks,
-    minute_selection_by_calendar=(
-        minute_selection_by_calendar
-    ),
-    description_by_calendar=(
-        description_by_calendar
-    ),
+    minute_selection_by_calendar=minute_selection_by_calendar,
+    description_mode=description_mode,
+    overall_description=overall_description,
+    #description_by_calendar=description_by_calendar,
+    descriptions_by_calendar=descriptions_by_calendar,
     add_repeat=add_repeat,
 )
+
+# old version doesn't have descriptions updated
+# output_df = build_output_dataframe(
+#     selected_calendars=selected_calendars,
+#     fiscal_weeks=fiscal_weeks,
+#     minute_selection_by_calendar=(
+#         minute_selection_by_calendar
+#     ),
+#     description_by_calendar=(
+#         description_by_calendar
+#     ),
+#     add_repeat=add_repeat,
+# )
 
 
 # ============================================================
