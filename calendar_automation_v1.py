@@ -446,18 +446,12 @@ def build_output_dataframe(
 # new functions to change color of buttons entirely
 def get_status_button_colors(status):
     """
-    Return accessible colors for a date button.
-
-    Colors:
-    - Gray: Not selected
-    - Green: Open
-    - Red: Closed
+    Return accessible colors for a calendar date button.
     """
 
     if status == "Open":
         return {
             "background": "#188038",
-            "hover": "#137333",
             "text": "#FFFFFF",
             "border": "#0D652D",
         }
@@ -465,14 +459,12 @@ def get_status_button_colors(status):
     if status == "Closed":
         return {
             "background": "#D93025",
-            "hover": "#B31412",
             "text": "#FFFFFF",
             "border": "#A50E0E",
         }
 
     return {
         "background": "#E0E0E0",
-        "hover": "#C7C7C7",
         "text": "#202124",
         "border": "#9AA0A6",
     }
@@ -484,10 +476,11 @@ def render_date_button(
     key_prefix,
 ):
     """
-    Render one fully colored clickable calendar-day button.
+    Render one colored calendar date button.
 
-    Clicking cycles:
-    Not selected -> Open -> Closed -> Not selected
+    Gray = Not selected
+    Green = Open
+    Red = Closed
     """
 
     status = get_day_status(
@@ -499,8 +492,10 @@ def render_date_button(
 
     if status == "Open":
         icon = "●"
+
     elif status == "Closed":
         icon = "■"
+
     else:
         icon = "○"
 
@@ -510,132 +505,121 @@ def render_date_button(
         f"{calendar_date.day}"
     )
 
-    container_key = (
-        f"styled_date__"
-        f"{safe_key(calendar_name)}__"
-        f"{calendar_date.isoformat()}__"
-        f"{safe_key(key_prefix)}"
-    )
+    # ---------------------------------------------------------
+    # Create a unique CSS-safe key for THIS particular button
+    # ---------------------------------------------------------
 
     button_key = (
-        f"date_button__"
-        f"{safe_key(calendar_name)}__"
-        f"{calendar_date.isoformat()}__"
+        f"datebtn_"
+        f"{safe_key(calendar_name)}_"
+        f"{calendar_date.strftime('%Y%m%d')}_"
         f"{safe_key(key_prefix)}"
     )
 
-    with stylable_container(
-        key=container_key,
-        css_styles=f"""
-        button {{
+    # ---------------------------------------------------------
+    # Style THIS button using the CSS class Streamlit creates
+    # from its key:
+    #
+    # st-key-{button_key}
+    # ---------------------------------------------------------
+
+    st.markdown(
+        f"""
+        <style>
+
+        .st-key-{button_key} button {{
             background-color: {colors["background"]} !important;
+            background: {colors["background"]} !important;
+
             color: {colors["text"]} !important;
+
             border: 2px solid {colors["border"]} !important;
             border-radius: 7px !important;
+
             min-height: 52px !important;
             width: 100% !important;
+
             font-weight: 700 !important;
             font-size: 0.92rem !important;
+
             padding: 0.35rem 0.2rem !important;
-            transition:
-                background-color 0.1s ease,
-                border-color 0.1s ease,
-                transform 0.1s ease !important;
+
+            box-shadow: none !important;
+            outline: none !important;
+
+            transition: none !important;
         }}
 
-        button:hover {{
-            background-color: {colors["hover"]} !important;
-            border-color: {colors["border"]} !important;
+
+        .st-key-{button_key} button:hover {{
+            background-color: {colors["background"]} !important;
+            background: {colors["background"]} !important;
+
             color: {colors["text"]} !important;
-            transform: scale(1.02);
+
+            border-color: {colors["border"]} !important;
+
+            box-shadow: none !important;
+            outline: none !important;
         }}
 
-        button:focus {{
-            outline: 4px solid #1A73E8 !important;
-            outline-offset: 2px !important;
+
+        .st-key-{button_key} button:active {{
+            background-color: {colors["background"]} !important;
+            background: {colors["background"]} !important;
+
+            color: {colors["text"]} !important;
+
+            border-color: {colors["border"]} !important;
+
+            box-shadow: none !important;
+            outline: none !important;
         }}
 
-        button p {{
+
+        .st-key-{button_key} button:focus,
+        .st-key-{button_key} button:focus-visible {{
+            background-color: {colors["background"]} !important;
+            background: {colors["background"]} !important;
+
+            color: {colors["text"]} !important;
+
+            border-color: {colors["border"]} !important;
+
+            box-shadow: none !important;
+            outline: none !important;
+        }}
+
+
+        .st-key-{button_key} button p,
+        .st-key-{button_key} button:hover p,
+        .st-key-{button_key} button:active p,
+        .st-key-{button_key} button:focus p {{
             color: {colors["text"]} !important;
             font-weight: 700 !important;
-            margin: 0 !important;
         }}
+
+        </style>
         """,
+        unsafe_allow_html=True,
+    )
+
+    # ---------------------------------------------------------
+    # Render the actual Streamlit button
+    # ---------------------------------------------------------
+
+    if st.button(
+        button_label,
+        key=button_key,
+        use_container_width=True,
     ):
-        if st.button(
-            button_label,
-            key=button_key,
-            use_container_width=True,
-        ):
-            cycle_day_status(
-                calendar_name,
-                calendar_date
-            )
 
-            st.rerun()
+        cycle_day_status(
+            calendar_name,
+            calendar_date
+        )
 
-
-# no longer need this function bc exporting csv
-# def create_excel_file(output_df):
-#     """Create the formatted Excel import file in memory."""
-#     output = io.BytesIO()
-
-#     with pd.ExcelWriter(
-#         output,
-#         engine="openpyxl",
-#         datetime_format="m/d/yyyy h:mm",
-#     ) as writer:
-#         output_df.to_excel(
-#             writer,
-#             index=False,
-#             sheet_name="Calendar Import",
-#         )
-
-#         worksheet = writer.book["Calendar Import"]
-#         worksheet.freeze_panes = "A2"
-#         worksheet.auto_filter.ref = worksheet.dimensions
-
-#         header_fill = PatternFill(
-#             fill_type="solid",
-#             fgColor="1F4E78",
-#         )
-#         header_font = Font(
-#             color="FFFFFF",
-#             bold=True,
-#         )
-
-#         for header_cell in worksheet[1]:
-#             header_cell.fill = header_fill
-#             header_cell.font = header_font
-#             header_cell.alignment = Alignment(
-#                 horizontal="center",
-#                 vertical="center",
-#             )
-
-#         for date_cell in worksheet["B"][1:]:
-#             date_cell.number_format = "m/d/yyyy h:mm"
-
-#         widths = {
-#             "A": 26,
-#             "B": 20,
-#             "C": 12,
-#             "D": 12,
-#             "E": 10,
-#             "F": 30,
-#             "G": 8,
-#             "H": 12,
-#             "I": 10,
-#         }
-
-#         for column_letter, width in widths.items():
-#             worksheet.column_dimensions[column_letter].width = width
-
-#         for row in worksheet.iter_rows(min_row=2):
-#             for cell in row:
-#                 cell.alignment = Alignment(vertical="center")
-
-#     output.seek(0)
-#     return output
+        st.rerun()
 
 
 def selected_date_summary(calendar_name, fiscal_weeks):
@@ -917,11 +901,6 @@ selection_method = st.radio(
 
 if selection_method == "Select fiscal weeks":
 
-    st.info(
-        "Select fiscal weeks 1 through 52. "
-        "The app opens to fiscal weeks 45 through 48 by default."
-    )
-
     week_col1, week_col2 = st.columns(2)
 
     with week_col1:
@@ -957,12 +936,6 @@ if selection_method == "Select fiscal weeks":
     )
 
 else:
-
-    st.info(
-        "Select any beginning and ending dates. "
-        "The app will include every Sunday-to-Saturday week "
-        "that overlaps the selected dates."
-    )
 
     date_col1, date_col2 = st.columns(2)
 
