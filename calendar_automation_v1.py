@@ -479,7 +479,7 @@ def build_output_dataframe(
 
             if (
                 minute_option
-                == "First minute of the day"
+                == "First minute of the day (12:00 - 12:01)"
             ):
 
                 repeat_effective_datetime = (
@@ -491,7 +491,7 @@ def build_output_dataframe(
 
             elif (
                 minute_option
-                == "Last minute of the day"
+                == "Last minute of the day (11:59 - 12:00)"
             ):
 
                 repeat_effective_datetime = (
